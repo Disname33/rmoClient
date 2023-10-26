@@ -21,7 +21,7 @@ ClientWindow::~ClientWindow()
 {
     delete ui;
 }
-
+    // Setting indication of the active antenna rotation control button
 void ClientWindow::setCheckedRotationButton(QString buttonText){
     QPushButton* buttons[3] = {ui->buttonRotationStop, ui->buttonRotation3rpm, ui->buttonRotation6rpm};
     for (auto btn : buttons)
@@ -30,18 +30,15 @@ void ClientWindow::setCheckedRotationButton(QString buttonText){
     }
 
 }
-
+    // Processing of clicked the antenna rotation control buttons
 void ClientWindow::on_buttonRotationStop_clicked()
 {
     ui->buttonRotationStop->setPalette(QPalette(Qt::yellow));
     sendToServer("rotation", ui->buttonRotationStop->text());
-
 }
-
 
 void ClientWindow::on_buttonRotation3rpm_clicked()
 {
-
     ui->buttonRotation3rpm->setPalette(QPalette(Qt::yellow));
     sendToServer("rotation", ui->buttonRotation3rpm->text());
 }
@@ -52,7 +49,7 @@ void ClientWindow::on_buttonRotation6rpm_clicked()
     sendToServer("rotation", ui->buttonRotation6rpm->text());
 }
 
-
+    // Setting indication of the active radiation control button
 void ClientWindow::setCheckedRadiationButton(QString buttonText){
     QPushButton* buttons[3] = {ui->buttonRadiationOff, ui->buttonRadiation50, ui->buttonRadiation100};
     isRadiationOn = buttonText != "ОТКЛ";
@@ -62,7 +59,7 @@ void ClientWindow::setCheckedRadiationButton(QString buttonText){
     }
 
 }
-
+    // Processing of clicking the radiation control buttons
 void ClientWindow::on_buttonRadiationOff_clicked()
 {
      sendToServer("radiation", ui->buttonRadiationOff->text());
@@ -80,7 +77,7 @@ void ClientWindow::on_buttonRadiation100_clicked()
     sendToServer("radiation", ui->buttonRadiation100->text());
 }
 
-// Обработка события движения мыши
+    // Mouse position
 void ClientWindow::mouseMoveEvent(QMouseEvent *event)
 {
     QPoint viewPos = event->pos();
@@ -96,6 +93,7 @@ void ClientWindow::mouseMoveEvent(QMouseEvent *event)
     ui->label_A->setText(QString::number(angle));
 }
 
+    // Draw indicator
 void ClientWindow::paintEvent(QPaintEvent *)
 {
 
@@ -110,25 +108,25 @@ void ClientWindow::paintEvent(QPaintEvent *)
     painter.setBrush(Qt::black);
     painter.setPen(pen);
 
+    // Set coordinat system
     int indicatorHeight = (ui->statusbar->y()-ui->menubar->height())/2;
     painter.drawRect(0, ui->menubar->height(), ui->rightbar->x(),indicatorHeight*2);
-    //coordinat system
     centerX = ui->rightbar->x()/2;
     centerY = indicatorHeight+ui->menubar->height();
     painter.translate(centerX, centerY);
 
-    //size
+    // Set size
     R = qMin((ui->rightbar->x()+4)/2,indicatorHeight-2);
 
     pen.setColor(Qt::white);
     painter.setPen(pen);
     painter.setBrush(Qt::NoBrush);
-    //clock face
+    // Draw radial lines
     for(int i = 0; i <12; i++){
         painter.drawLine(0, 0, 0, R);
         painter.rotate(30.0);
     }
-
+    // Draw circle lines
     for (int radius =R/7 ; radius<=R; radius+=2*R/7) {
         painter.drawEllipse(-radius, -radius, 2 * radius, 2 * radius);
     }
@@ -137,17 +135,17 @@ void ClientWindow::paintEvent(QPaintEvent *)
     for (int radius =2*R/7 ; radius<=R; radius+=2*R/7) {
         painter.drawEllipse(-radius, -radius, 2 * radius, 2 * radius);
     }
-
     painter.save();
+    // Draw beam line
     painter.setPen(isRadiationOn?QColor(67, 210, 40, 220):QColor(67, 40, 255, 220));
-    painter.rotate(beamLineAngle);
+    painter.rotate(beamLineAngle+180);
     painter.drawLine(0, 0, 0, R);
     painter.restore();
 
     painter.end();
 }
 
-
+    // Processing incoming message from the server
 void ClientWindow::slotReadyRead()
 {
     socket = (QTcpSocket*)sender();
@@ -168,13 +166,14 @@ void ClientWindow::slotReadyRead()
                 break;
             nextBlockSize = 0;
             QString action;
-            QString str;
-            in >> action >> str;
-            qDebug() << str;
+            QString message;
+            in >> action >> message;
+            qDebug() << message;
+
             if (action == "angle")
             {
                 bool ok;
-                float floatValue = str.toFloat(&ok);
+                float floatValue = message.toFloat(&ok);
                 if (ok){
                     beamLineAngle = floatValue;
                     update();
@@ -182,13 +181,13 @@ void ClientWindow::slotReadyRead()
                 else
                     qDebug() << "Ошибка конвертации строки в float";
             }
-
             else if (action == "rotation")
-                setCheckedRotationButton(str);
+                setCheckedRotationButton(message);
             else if (action == "radiation"){
-                setCheckedRadiationButton(str);
+                setCheckedRadiationButton(message);
                 update();
             }
+
             ui->stationStatusButton->setText("НОРМА");
             ui->stationStatusButton->setPalette(QPalette(Qt::darkGreen));
             break;
@@ -201,17 +200,18 @@ void ClientWindow::slotReadyRead()
     }
 }
 
-void ClientWindow::sendToServer(QString action, QString str)
+    // Sending message to the server
+void ClientWindow::sendToServer(QString action, QString message)
 {
-    Data.clear();
-    QDataStream out(&Data, QIODevice::WriteOnly);
+    data.clear();
+    QDataStream out(&data, QIODevice::WriteOnly);
     out.setVersion(QDataStream::Qt_5_12);
     if(socket->state() == QAbstractSocket::ConnectedState || socket->state() == QAbstractSocket::ConnectingState)
     {
-        out << quint16(0) << action << str;
+        out << quint16(0) << action << message;
         out.device()->seek(0);
-        out << quint16(Data.size()-sizeof(quint16));
-        socket->write(Data);
+        out << quint16(data.size()-sizeof(quint16));
+        socket->write(data);
     }
     else
     {
@@ -222,7 +222,7 @@ void ClientWindow::sendToServer(QString action, QString str)
 
 void ClientWindow::errorConnection(QString e)
 {
-    qDebug() << "is no connection to the server!";
+    qDebug() << e;
     ui->stationStatusButton->setText("АВАРИЯ");
     ui->stationStatusButton->setPalette(QPalette(Qt::darkRed));
 }
