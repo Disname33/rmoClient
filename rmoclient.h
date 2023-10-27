@@ -29,23 +29,27 @@ private slots:
     void on_buttonRadiation100_clicked();
 
     void mouseMoveEvent(QMouseEvent *) override;
+
     void slotReadyRead();
+    void slotDisconnected();
+    void slotError(QAbstractSocket::SocketError);
+    void slotReconnect();
 
 private:
     Ui::ClientWindow *ui;
     QTcpSocket *socket;
-    QByteArray Data;
+    QByteArray data;
+    quint16 nextBlockSize;
     void sendToServer(QString, QString);
     void errorConnection(QString);
     void setCheckedRotationButton(QString);
     void setCheckedRadiationButton(QString);
-    quint16 nextBlockSize;
+    void connectToServer();
 
 protected:
     void paintEvent(QPaintEvent *) override;
     int R, centerX, centerY;
     float beamLineAngle;
-    bool isBeanLineRotate = false;
     bool isRadiationOn = false;
 
 };

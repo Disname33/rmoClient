@@ -10,11 +10,17 @@ ClientWindow::ClientWindow(QWidget *parent)
     beamLineAngle = 0.0f;
     nextBlockSize = 0;
     socket = new QTcpSocket(this);
-    socket->connectToHost("127.0.0.1", 2323);
-    //ToDo add reconnect
+
+    QTimer *reconnectTimer = new QTimer(this);
+    reconnectTimer->setInterval(5000);
+    reconnectTimer->setSingleShot(true);
+
     connect(socket, &QTcpSocket::readyRead, this, &ClientWindow::slotReadyRead);
-    connect(socket, &QTcpSocket::disconnected, socket, &QTcpSocket::deleteLater);
-    sendToServer("Connect", "Ok");
+    connect(socket, &QTcpSocket::disconnected, this, &ClientWindow::slotDisconnected);
+    connect(socket, QOverload<QAbstractSocket::SocketError>::of(&QAbstractSocket::error), this, &ClientWindow::slotError);
+    connect(reconnectTimer, &QTimer::timeout, this, &ClientWindow::slotReconnect);
+
+    connectToServer();
 }
 
 ClientWindow::~ClientWindow()
@@ -96,36 +102,40 @@ void ClientWindow::mouseMoveEvent(QMouseEvent *event)
     // Draw indicator
 void ClientWindow::paintEvent(QPaintEvent *)
 {
-
     QPainter painter;
+    QPen pen;
 
     painter.begin(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    QPen pen;
+
     pen.setColor(Qt::black);
     pen.setWidth(1);
     painter.setBrush(Qt::black);
     painter.setPen(pen);
 
-    // Set coordinat system
+    // Draw background
     int indicatorHeight = (ui->statusbar->y()-ui->menubar->height())/2;
     painter.drawRect(0, ui->menubar->height(), ui->rightbar->x(),indicatorHeight*2);
+
+    // Set coordinat system
     centerX = ui->rightbar->x()/2;
     centerY = indicatorHeight+ui->menubar->height();
     painter.translate(centerX, centerY);
 
-    // Set size
+    // Set maximal radius size
     R = qMin((ui->rightbar->x()+4)/2,indicatorHeight-2);
 
     pen.setColor(Qt::white);
     painter.setPen(pen);
     painter.setBrush(Qt::NoBrush);
+
     // Draw radial lines
     for(int i = 0; i <12; i++){
         painter.drawLine(0, 0, 0, R);
         painter.rotate(30.0);
     }
+
     // Draw circle lines
     for (int radius =R/7 ; radius<=R; radius+=2*R/7) {
         painter.drawEllipse(-radius, -radius, 2 * radius, 2 * radius);
@@ -136,6 +146,7 @@ void ClientWindow::paintEvent(QPaintEvent *)
         painter.drawEllipse(-radius, -radius, 2 * radius, 2 * radius);
     }
     painter.save();
+
     // Draw beam line
     painter.setPen(isRadiationOn?QColor(67, 210, 40, 220):QColor(67, 40, 255, 220));
     painter.rotate(beamLineAngle+180);
@@ -145,81 +156,105 @@ void ClientWindow::paintEvent(QPaintEvent *)
     painter.end();
 }
 
-    // Processing incoming message from the server
+    //Open connection to server and setting green palette to status button if connection successful
+void ClientWindow::connectToServer()
+{
+    if (socket->state() == QAbstractSocket::UnconnectedState) {
+        socket->connectToHost("127.0.0.1", 2323);
+    }
+
+    if(socket->state() == QAbstractSocket::ConnectedState || socket->state() == QAbstractSocket::ConnectingState){
+        ui->stationStatusButton->setText("НОРМА");
+        ui->stationStatusButton->setPalette(QPalette(Qt::darkGreen));
+    }
+}
+
+//Receiving and processing messages from the server
 void ClientWindow::slotReadyRead()
 {
-    socket = (QTcpSocket*)sender();
-    QDataStream in(socket);
-    in.setVersion(QDataStream::Qt_5_12);
+socket = (QTcpSocket*)sender();
+QDataStream in(socket);
+in.setVersion(QDataStream::Qt_5_12);
 
-    if(in.status()==QDataStream::Ok)
-    {
-        for (; ; )
-        {
-            if(nextBlockSize == 0)
-            {
-                if(socket->bytesAvailable() < 2)
-                    break;
-                in >> nextBlockSize;
-            }
-            if(socket->bytesAvailable()<nextBlockSize)
-                break;
-            nextBlockSize = 0;
-            QString action;
-            QString message;
-            in >> action >> message;
-            qDebug() << message;
-
-            if (action == "angle")
-            {
-                bool ok;
-                float floatValue = message.toFloat(&ok);
-                if (ok){
-                    beamLineAngle = floatValue;
-                    update();
-                }
-                else
-                    qDebug() << "Ошибка конвертации строки в float";
-            }
-            else if (action == "rotation")
-                setCheckedRotationButton(message);
-            else if (action == "radiation"){
-                setCheckedRadiationButton(message);
-                update();
-            }
-
-            ui->stationStatusButton->setText("НОРМА");
-            ui->stationStatusButton->setPalette(QPalette(Qt::darkGreen));
+while (true) {
+    if (nextBlockSize == 0) {
+        if (socket->bytesAvailable() < 2)
             break;
+        in >> nextBlockSize;
+    }
+    if (socket->bytesAvailable() < nextBlockSize)
+        break;
+    nextBlockSize = 0;
+    QString parameter;
+    QString value;
+    in >> parameter >> value;
+    qDebug() << value;
+
+    if (parameter == "angle") {
+        bool ok;
+        float floatValue = value.toFloat(&ok);
+        if (ok) {
+            beamLineAngle = floatValue;
+            update();
+        } else {
+            qDebug() << "Error convertion QString to float";
         }
 
-    }
-    else
-    {
-       errorConnection("is no connection to the server!");
+    } else if (parameter == "rotation")
+        setCheckedRotationButton(value);
+
+    else if (parameter == "radiation") {
+        setCheckedRadiationButton(value);
+        update();
     }
 }
+}
 
-    // Sending message to the server
+// Sending message to the server
 void ClientWindow::sendToServer(QString action, QString message)
 {
-    data.clear();
-    QDataStream out(&data, QIODevice::WriteOnly);
-    out.setVersion(QDataStream::Qt_5_12);
-    if(socket->state() == QAbstractSocket::ConnectedState || socket->state() == QAbstractSocket::ConnectingState)
-    {
-        out << quint16(0) << action << message;
-        out.device()->seek(0);
-        out << quint16(data.size()-sizeof(quint16));
-        socket->write(data);
-    }
-    else
-    {
-        errorConnection("is no connection to the server!");
-    }
-
+data.clear();
+QDataStream out(&data, QIODevice::WriteOnly);
+out.setVersion(QDataStream::Qt_5_12);
+if(socket->state() == QAbstractSocket::ConnectedState || socket->state() == QAbstractSocket::ConnectingState)
+{
+    out << quint16(0) << action << message;
+    out.device()->seek(0);
+    out << quint16(data.size()-sizeof(quint16));
+    socket->write(data);
+}
+else
+{
+    errorConnection("Is no connection to the server!");
+}
 }
 
+
+    //Processing error connection
+void ClientWindow::slotError(QAbstractSocket::SocketError error)
+{
+    if (error == QAbstractSocket::RemoteHostClosedError) {
+        qDebug() << "Server closed connection";
+    } else {
+        //
+        qDebug() << "Connection error";
+    }
+    QTimer::singleShot(5000, this, &ClientWindow::slotReconnect);
+    errorConnection(socket->errorString());
+}
+
+    //If disconnectin when try reconnect in 5 seconds
+void ClientWindow::slotDisconnected()
+{
+    QTimer::singleShot(5000, this, &ClientWindow::slotReconnect);
+}
+
+void ClientWindow::slotReconnect()
+{
+    connectToServer();
+}
+
+    //Setting red palette to status button if connection error
 void ClientWindow::errorConnection(QString e)
 {
     qDebug() << e;
