@@ -5,6 +5,7 @@
 #include <QTcpSocket>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QDateTime>
 #include <QTimer>
 
 QT_BEGIN_NAMESPACE
@@ -34,6 +35,7 @@ private slots:
     void slotDisconnected();
     void slotError(QAbstractSocket::SocketError);
     void slotReconnect();
+    void slotConnected();
 
 private:
     Ui::ClientWindow *ui;

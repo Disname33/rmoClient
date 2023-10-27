@@ -16,6 +16,7 @@ ClientWindow::ClientWindow(QWidget *parent)
     reconnectTimer->setSingleShot(true);
 
     connect(socket, &QTcpSocket::readyRead, this, &ClientWindow::slotReadyRead);
+    connect(socket, &QTcpSocket::connected, this, &ClientWindow::slotConnected);
     connect(socket, &QTcpSocket::disconnected, this, &ClientWindow::slotDisconnected);
     connect(socket, QOverload<QAbstractSocket::SocketError>::of(&QAbstractSocket::error), this, &ClientWindow::slotError);
     connect(reconnectTimer, &QTimer::timeout, this, &ClientWindow::slotReconnect);
@@ -156,20 +157,26 @@ void ClientWindow::paintEvent(QPaintEvent *)
     painter.end();
 }
 
-    //Open connection to server and setting green palette to status button if connection successful
+    //Open connection to server and
 void ClientWindow::connectToServer()
 {
     if (socket->state() == QAbstractSocket::UnconnectedState) {
         socket->connectToHost("127.0.0.1", 2323);
     }
-
-    if(socket->state() == QAbstractSocket::ConnectedState || socket->state() == QAbstractSocket::ConnectingState){
-        ui->stationStatusButton->setText("НОРМА");
-        ui->stationStatusButton->setPalette(QPalette(Qt::darkGreen));
-    }
 }
 
-//Receiving and processing messages from the server
+
+    //If connected to server setting green palette to status button if connection successful
+void ClientWindow::slotConnected()
+{
+
+    ui->stationStatusButton->setText("НОРМА");
+    ui->stationStatusButton->setPalette(QPalette(Qt::darkGreen));
+    ui->systemMessageBrowser->append(QDateTime::currentDateTime().toString("dd MMMM yyyy HH:mm:ss"));
+    ui->systemMessageBrowser->append("Установленно соединение с сервером");
+}
+
+    //Receiving and processing messages from the server
 void ClientWindow::slotReadyRead()
 {
 socket = (QTcpSocket*)sender();
@@ -210,25 +217,24 @@ while (true) {
 }
 }
 
-// Sending message to the server
+    // Sending message to the server
 void ClientWindow::sendToServer(QString action, QString message)
 {
-data.clear();
-QDataStream out(&data, QIODevice::WriteOnly);
-out.setVersion(QDataStream::Qt_5_12);
-if(socket->state() == QAbstractSocket::ConnectedState || socket->state() == QAbstractSocket::ConnectingState)
-{
-    out << quint16(0) << action << message;
-    out.device()->seek(0);
-    out << quint16(data.size()-sizeof(quint16));
-    socket->write(data);
+    data.clear();
+    QDataStream out(&data, QIODevice::WriteOnly);
+    out.setVersion(QDataStream::Qt_5_12);
+    if(socket->state() == QAbstractSocket::ConnectedState || socket->state() == QAbstractSocket::ConnectingState)
+    {
+        out << quint16(0) << action << message;
+        out.device()->seek(0);
+        out << quint16(data.size()-sizeof(quint16));
+        socket->write(data);
+    }
+    else
+    {
+        errorConnection("Is no connection to the server!");
+    }
 }
-else
-{
-    errorConnection("Is no connection to the server!");
-}
-}
-
 
     //Processing error connection
 void ClientWindow::slotError(QAbstractSocket::SocketError error)
@@ -243,9 +249,11 @@ void ClientWindow::slotError(QAbstractSocket::SocketError error)
     errorConnection(socket->errorString());
 }
 
-    //If disconnectin when try reconnect in 5 seconds
+    //If disconnecting when try reconnect in 5 seconds
 void ClientWindow::slotDisconnected()
 {
+    ui->systemMessageBrowser->append(QDateTime::currentDateTime().toString("dd MMMM yyyy HH:mm:ss"));
+    ui->systemMessageBrowser->append("Cоединение с сервером разорвано");
     QTimer::singleShot(5000, this, &ClientWindow::slotReconnect);
 }
 
