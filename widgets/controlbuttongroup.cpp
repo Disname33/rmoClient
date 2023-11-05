@@ -48,11 +48,10 @@ void ControlButtonGroup::on_btn_clicked(){
 
         if (conversionOK) {
             emit clickSignal(parameter, buttonIndex);
-        } else {
-//            qWarning() << "Failed to convert button number to integer";
         }
     }
 }
+
 
 void ControlButtonGroup::setCheckedButton(int buttonIndex){
     QPalette palette = this->palette();
@@ -62,26 +61,19 @@ void ControlButtonGroup::setCheckedButton(int buttonIndex){
         palette.setColor(QPalette::Button, buttonIndex == i?Qt::darkGreen:QColor(239,239,239));
         buttonList[i]->setPalette(palette);
     }
-
-    this->update();
-
 }
 
-//void ControlButtonGroup::slotChangeLabelText(int buttonIndex) {
-//    setCheckedButton(buttonIndex);
-//}
 
 int ControlButtonGroup::getActive(){
     return activeStatus;
 }
+
 
 ControlButtonGroup::~ControlButtonGroup(){
 
     delete label;
     delete doubleDotelabel;
 
-    for (int i = 0; i < buttonList.size(); i++) {
-        delete buttonList[i];
-    }
+    qDeleteAll(buttonList);
 }
 

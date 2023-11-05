@@ -41,16 +41,14 @@ private:
     QTextBrowser* systemMessageBrowser;
     QString serverAddress;
     quint16 serverPort;
-    void errorConnection(QString);
-    void connectToServer();
-
-private:
     ControlButtonGroup* rotationButton;
     ControlButtonGroup* radiationButton;
     ControlButtonGroup* maxDistantionButton;
     StationStatus* stationStatus;
     PlanPositionIndicator* planPositionIndicator;
     MousePositionInfo* mousePositionInfo;
+    void errorConnection(QString error);
+    void connectToServer();
 
 };
 #endif // CLIENTWINDOW_H

@@ -34,9 +34,8 @@ void PlanPositionIndicator::mouseMoveEvent(QMouseEvent *event)
 
 // Draw indicator
 //void PlanPositionIndicator::updateScene() {
-//    indicatorScene->clear(); // Очистка сцены
+//    indicatorScene->clear();
 
-//    // Перерисовка элементов
 //    QPen pen;
 //    pen.setColor(Qt::black);
 //    pen.setWidth(1);
@@ -47,10 +46,6 @@ void PlanPositionIndicator::mouseMoveEvent(QMouseEvent *event)
 //    indicatorScene->addLine(-centerX, 0, centerX, 0, QPen(Qt::white));
 //    indicatorScene->addLine(0, -centerY, 0, centerY, QPen(Qt::white));
 
-//    // Другие действия для отрисовки
-//    // ...
-
-//    // Вызов функции отображения
 //    this->viewport()->update();
 //}
 
@@ -93,16 +88,14 @@ void PlanPositionIndicator::paintEvent(QPaintEvent *)
         // Draw circle lines
         pen.setColor(Qt::gray);
         painter.setPen(pen);
-        for (int radius =1 ; radius<=circleCount; radius+=2) {
-            float curentRadius = (float)radius*circleRadius;
-            painter.drawEllipse(-curentRadius, -curentRadius, 2 * curentRadius, 2 * curentRadius);
-        }
-        pen.setColor(Qt::white);
-        pen.setWidth(2);
-        painter.setPen(pen);
-        for (int radius =2 ; radius<=circleCount; radius+=2) {
-            float curentRadius = (float)radius*circleRadius;
-            painter.drawEllipse(-curentRadius, -curentRadius, 2 * curentRadius, 2 * curentRadius);
+        for (int i = 1;i <= 2 ; i++ ) {
+            for (int radius = i ; radius<=circleCount; radius+=2) {
+                float curentRadius = (float)radius*circleRadius;
+                painter.drawEllipse(-curentRadius, -curentRadius, 2 * curentRadius, 2 * curentRadius);
+            }
+            pen.setColor(Qt::white);
+            pen.setWidth(2);
+            painter.setPen(pen);
         }
         if (isServerConnected){
             // Draw beam line

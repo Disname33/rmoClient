@@ -191,12 +191,6 @@ ClientWindow::~ClientWindow()
 {
     socket->close();
     socket->deleteLater();
-    delete rotationButton;
-    delete radiationButton;
-    delete maxDistantionButton;
-    delete stationStatus;
-    delete mousePositionInfo;
-    delete planPositionIndicator;
-    delete systemMessageBrowser;
+
 }
 
