@@ -10,7 +10,6 @@
 #include "radarparameters.h"
 
 
-//class PlanPositionIndicator : public QGraphicsView
 class PlanPositionIndicator : public QWidget
 {
     Q_OBJECT
@@ -30,17 +29,10 @@ signals:
 public slots:
     void mouseMoveEvent(QMouseEvent *) override;
 
-private:
-//    QGraphicsScene *indicatorScene;
-//    QGraphicsScene *beamScene;
-
-
 protected:
     int distanceList[3]{350,600,1200};
     bool isServerConnected = false;
     void paintEvent(QPaintEvent *) override;
-//    void paintUpdate();
-//    void updateScene();
     int centerX, centerY, maxDistance, maxRadius;
     float beamLineAzimut;
     bool isRadiationOn = false;

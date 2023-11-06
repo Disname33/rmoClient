@@ -3,18 +3,12 @@
 #include <QDebug>
 
 PlanPositionIndicator::PlanPositionIndicator(QWidget *parent)
-//    : QGraphicsView(parent)
     : QWidget(parent)
 {
-//    indicatorScene = new QGraphicsScene();
-//    beamScene = new QGraphicsScene();
-//    this->setScene(indicatorScene);
     setCursor(Qt::CrossCursor);
-//    this->setRenderHint(QPainter::Antialiasing);
     this->setMouseTracking(true);
     maxDistance = distanceList[0];
     beamLineAzimut = 0.0f;
-//    update();
 }
 
 // Mouse position
@@ -32,32 +26,13 @@ void PlanPositionIndicator::mouseMoveEvent(QMouseEvent *event)
 }
 
 
-// Draw indicator
-//void PlanPositionIndicator::updateScene() {
-//    indicatorScene->clear();
-
-//    QPen pen;
-//    pen.setColor(Qt::black);
-//    pen.setWidth(1);
-//    indicatorScene->addRect(0, 0, width(), height(), pen, QBrush(QColor(30, 30, 30)));
-
-//    centerX = width() / 2;
-//    centerY = height() / 2;
-//    indicatorScene->addLine(-centerX, 0, centerX, 0, QPen(Qt::white));
-//    indicatorScene->addLine(0, -centerY, 0, centerY, QPen(Qt::white));
-
-//    this->viewport()->update();
-//}
-
 void PlanPositionIndicator::paintEvent(QPaintEvent *)
-//void PlanPositionIndicator::paintUpdate()
 {
         QPainter painter;
         QPen pen;
-    //    painter.begin(this->viewport());
+
         painter.begin(this);
         painter.setRenderHint(QPainter::Antialiasing);
-
         pen.setColor(Qt::black);
         pen.setWidth(1);
         painter.setBrush(isServerConnected?QColor(30, 30, 30):QColor(50, 50, 50));
