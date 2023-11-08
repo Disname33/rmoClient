@@ -1,6 +1,8 @@
 #ifndef CLIENTWINDOW_H
 #define CLIENTWINDOW_H
 
+#include <QToolBar>
+#include <QVector>
 #include <QtCore>
 #if QT_VERSION >= 0x050000
 #include <QtWidgets/QMainWindow>
@@ -8,15 +10,18 @@
 #include <QtGui/QMainWindow>
 #endif
 #include <QTcpSocket>
-#include <QDateTime>
 #include <QDataStream>
-#include <QTimer>
+#include <QLabel>
 #include <QTextBrowser>
-#include "widgets/controlbuttongroup.h"
-#include "widgets/planpositionindicator.h"
-#include "widgets/mousepositioninfo.h"
+#include <QDateTime>
+#include <QTimer>
+#include <QAction>
 #include "widgets/radarparameters.h"
-#include "widgets/stationstatus.h"
+#include "widgets/planpositionindicator.h"
+#include "widgets/controlpanelwidget.h"
+#include "widgets/radarsettingswidget.h"
+#include "widgets/exitwidget.h"
+
 
 class ClientWindow : public QMainWindow
 {
@@ -32,23 +37,35 @@ private slots:
     void slotError(QAbstractSocket::SocketError);
     void slotReconnect();
     void slotConnected();
-    void sendToServer(RadarParameters parameter, int buttonIndex);
+    void sendToServer(RadarParameters parameter, quint8 buttonIndex);
+
+    void changeRightPanel();
+    void updateDateTime();
 
 private:
     QTcpSocket* socket;
     QByteArray data;
     quint16 nextBlockSize;
-    QTextBrowser* systemMessageBrowser;
     QString serverAddress;
     quint16 serverPort;
-    ControlButtonGroup* rotationButton;
-    ControlButtonGroup* radiationButton;
-    ControlButtonGroup* maxDistantionButton;
-    StationStatus* stationStatus;
+
+    QToolBar* menuToolBar;
+    QLabel* dateLabel;
+    QLabel* timeLabel;
+
+    ControlPanelWidget* controlPanelWidget;
+    RadarSettingsWidget* settingsWidget;
+    QWidget* infoWidget;
+    ExitWidget* exitWidget;
+
+    QVector <QAction*> menuActions;
+
     PlanPositionIndicator* planPositionIndicator;
-    MousePositionInfo* mousePositionInfo;
     void errorConnection(QString error);
     void connectToServer();
+
+    void createMenuToolBar();
+
 
 };
 #endif // CLIENTWINDOW_H

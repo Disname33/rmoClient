@@ -8,37 +8,33 @@ ClientWindow::ClientWindow(QWidget *parent)
     this->setWindowIcon(QIcon("../rmoclient/radar.png"));
     this->setMinimumSize(640, 480);
     this->setWindowTitle("Рабочее окно оператора");
+
     QWidget *centralWidget = new QWidget();
     QWidget *rightWidget = new QWidget();
-    rightWidget->setMaximumSize(270, 16777215);
+    QHBoxLayout *rightLayout = new QHBoxLayout();
 
-//    QSettings settings("/rmoconfig/settings.ini", QSettings::IniFormat, this);
+    controlPanelWidget = new ControlPanelWidget(rightWidget);
+    settingsWidget = new RadarSettingsWidget(rightWidget);
+    infoWidget = new QWidget(rightWidget);
+    exitWidget = new ExitWidget(rightWidget);
+    settingsWidget->hide();
+    infoWidget->hide();
+    exitWidget->hide();
+    rightWidget->setMaximumSize(270, 16777215);
+    rightLayout->setContentsMargins(0, 0, 0, 0);
+    rightLayout->addWidget(controlPanelWidget);
+    rightLayout->addWidget(settingsWidget);
+    rightLayout->addWidget(infoWidget);
+    rightLayout->addWidget(exitWidget);
+    rightWidget->setLayout(rightLayout);
+
     QSettings settings("./settings.ini", QSettings::IniFormat, this);
     settings.beginGroup("ServerConnection");
     serverAddress = settings.value("address", "127.0.0.1").toString();
-//    settings.setValue("address", "127.0.0.1");
     serverPort = settings.value("port", 2323).toUInt();
-//    settings.setValue("port", 2323);
     settings.endGroup();
 
     planPositionIndicator = new PlanPositionIndicator(centralWidget);
-    rotationButton = new ControlButtonGroup(rightWidget, RadarParameters::RotationSpeed, "ВРАЩ", {"СТОП", "3 ОБ.", "6 ОБ."});
-    radiationButton = new ControlButtonGroup(rightWidget, RadarParameters::RadiationPower, "ИЗЛ", {"ВЫКЛ", "50%", "100%"});
-    maxDistantionButton = new ControlButtonGroup(rightWidget, RadarParameters::MaxDistance, "ЗАП", {"350", "600", "1200"});
-    stationStatus = new StationStatus(rightWidget);
-    mousePositionInfo = new MousePositionInfo(rightWidget);
-    systemMessageBrowser = new QTextBrowser(rightWidget);
-
-
-     QVBoxLayout *rightLayout = new QVBoxLayout(rightWidget);
-     rightLayout->setObjectName("rightLayout");
-     rightLayout->addWidget(rotationButton);
-     rightLayout->addWidget(radiationButton);
-     rightLayout->addWidget(maxDistantionButton);
-     rightLayout->addWidget(stationStatus);
-     rightLayout->addItem(new QSpacerItem(20, 40, QSizePolicy::Minimum, QSizePolicy::Expanding));
-     rightLayout->addWidget(systemMessageBrowser);
-     rightLayout->addWidget(mousePositionInfo);
 
      QHBoxLayout *mainLayout = new QHBoxLayout();
      mainLayout->setContentsMargins(0, 0, 0, 0);
@@ -47,11 +43,12 @@ ClientWindow::ClientWindow(QWidget *parent)
      centralWidget->setLayout(mainLayout);
      setCentralWidget(centralWidget);
 
-     connect(planPositionIndicator, &PlanPositionIndicator::mousePositionSignal, mousePositionInfo, &MousePositionInfo::mousePositionSlot);
+     createMenuToolBar();
 
-     connect(rotationButton, &ControlButtonGroup::clickSignal, this, &ClientWindow::sendToServer);
-     connect(radiationButton, &ControlButtonGroup::clickSignal, this, &ClientWindow::sendToServer);
-     connect(maxDistantionButton, &ControlButtonGroup::clickSignal, this, &ClientWindow::sendToServer);
+
+     connect(controlPanelWidget, &ControlPanelWidget::clickButtonSignal, this, &ClientWindow::sendToServer);
+     connect(planPositionIndicator, &PlanPositionIndicator::mousePositionSignal, controlPanelWidget, &ControlPanelWidget::mousePositionSlot);
+
 
      nextBlockSize = 0;
      socket = new QTcpSocket(this);
@@ -80,14 +77,53 @@ void ClientWindow::connectToServer()
 
 }
 
+void ClientWindow::createMenuToolBar()
+{
+    menuToolBar = addToolBar("Menu");
+    menuToolBar->setMovable(false);
+    menuActions.push_back(menuToolBar->addAction("Пульт РЛС"));
+    menuActions.push_back(menuToolBar->addAction("Настройка"));
+    menuActions.push_back(menuToolBar->addAction("Информация"));
+    QWidget* spacer = new QWidget(this);
+    spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    menuToolBar->addWidget(spacer);
+    dateLabel = new QLabel(this);
+    dateLabel->setMargin(2);
+    dateLabel->setPalette(QPalette(Qt::white));
+    timeLabel = new QLabel(this);
+    timeLabel->setMargin(2);
+    dateLabel->setPalette(QPalette(Qt::white));
+    updateDateTime();
+    menuToolBar->addWidget(dateLabel);
+    menuToolBar->addWidget(timeLabel);
+
+    QTimer* timer = new QTimer(this);
+    connect(timer, &QTimer::timeout, this, &ClientWindow::updateDateTime);
+    timer->start(1000);
+    menuActions.push_back(menuToolBar->addAction("Выход"));
+
+    for (auto menuAction : qAsConst(menuActions)) {
+        connect(menuAction, &QAction::triggered, this, &ClientWindow::changeRightPanel);
+        menuAction->setCheckable(true);
+    }
+
+    menuActions[0]->setChecked(true);
+
+}
+
+void ClientWindow::updateDateTime()
+{
+    dateLabel->setText(QDate::currentDate().toString(" dd.MM.yyyy "));
+    timeLabel->setText(QTime::currentTime().toString(" hh:mm:ss "));
+}
+
 
 //If connected to server setting green palette to status button if connection successful
 void ClientWindow::slotConnected()
 {
-    stationStatus->setStatus(true);
+    controlPanelWidget->setRadarStatus(true);
     planPositionIndicator->setIsServerConnected(true);
-    systemMessageBrowser->append(QDateTime::currentDateTime().toString("dd MMMM yyyy HH:mm:ss"));
-    systemMessageBrowser->append("Установленно соединение с сервером "+serverAddress);
+    controlPanelWidget->addSystemMessage("Установленно соединение с сервером "+serverAddress);
 }
 
 //Receiving and processing messages from the server
@@ -112,18 +148,17 @@ void ClientWindow::slotReadyRead()
 
         switch (parameter) {
             case RadarParameters::RotationSpeed:
-                rotationButton->setCheckedButton(int(value));
+                controlPanelWidget->setCheckedButton(parameter, int(value));
                 break;
             case RadarParameters::RadiationPower:
-                radiationButton->setCheckedButton(int(value));
+                controlPanelWidget->setCheckedButton(parameter, int(value));
                 planPositionIndicator->setRadiation(bool(value));
                 break;
             case RadarParameters::AntennaPosition:
-//                systemMessageBrowser->append(QString::number(value));
                 planPositionIndicator->setBeamAzimut(value);
                 break;
             case RadarParameters::MaxDistance:
-                maxDistantionButton->setCheckedButton(int(value));
+                controlPanelWidget->setCheckedButton(parameter, int(value));
                 planPositionIndicator->setMaxDistance(int(value));
                 break;
             default:
@@ -134,7 +169,7 @@ void ClientWindow::slotReadyRead()
 }
 
 // Sending message to the server
-void ClientWindow::sendToServer(RadarParameters parameter, int buttonIndex)
+void ClientWindow::sendToServer(RadarParameters parameter, quint8 buttonIndex)
 {
     data.clear();
 
@@ -153,6 +188,21 @@ void ClientWindow::sendToServer(RadarParameters parameter, int buttonIndex)
     }
 }
 
+void ClientWindow::changeRightPanel()
+{
+    QAction* action = (QAction*)sender();
+    qInfo() << action->text();
+    for (auto menuAction : qAsConst(menuActions)) {
+        menuAction->setChecked(menuAction == action);
+    }
+
+    controlPanelWidget->setVisible(menuActions[0] == action);
+    settingsWidget->setVisible(menuActions[1] == action);
+    infoWidget->setVisible(menuActions[2] == action);
+    exitWidget->setVisible(menuActions[3] == action);
+}
+
+
 //Processing error connection
 void ClientWindow::slotError(QAbstractSocket::SocketError error)
 {
@@ -169,8 +219,7 @@ void ClientWindow::slotError(QAbstractSocket::SocketError error)
 //If disconnecting when try reconnect in 5 seconds
 void ClientWindow::slotDisconnected()
 {
-    systemMessageBrowser->append(QDateTime::currentDateTime().toString("dd MMMM yyyy HH:mm:ss"));
-    systemMessageBrowser->append("Cоединение с сервером разорвано");
+    controlPanelWidget->addSystemMessage("Cоединение с сервером разорвано");
     QTimer::singleShot(5000, this, &ClientWindow::slotReconnect);
 }
 
@@ -183,14 +232,15 @@ connectToServer();
 void ClientWindow::errorConnection(QString e)
 {
     qDebug() << e;
-    stationStatus->setStatus(false);
+    controlPanelWidget->setRadarStatus(false);
     planPositionIndicator->setIsServerConnected(false);
 }
+
 
 ClientWindow::~ClientWindow()
 {
     socket->close();
     socket->deleteLater();
-
+    qDeleteAll(menuActions);
 }
 

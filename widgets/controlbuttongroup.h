@@ -21,7 +21,7 @@ public:
     int getActive();
 
     signals:
-        void clickSignal(RadarParameters parametr, int buttonIndex);
+        void clickSignal(RadarParameters parametr, quint8 buttonIndex);
 
 public slots:
     void on_btn_clicked();

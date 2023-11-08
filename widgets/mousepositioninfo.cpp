@@ -4,7 +4,7 @@ MousePositionInfo::MousePositionInfo(QWidget *parent)
     : QWidget(parent)
 {
     this->setMinimumSize(220, 30);
-    this->setMinimumSize(220, 40);
+    this->setMinimumSize(220, 70);
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     setContentsMargins(0, 0, 0, 0);
     QGridLayout* gridLayout = new QGridLayout(this);

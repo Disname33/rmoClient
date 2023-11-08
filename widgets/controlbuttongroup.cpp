@@ -44,7 +44,7 @@ void ControlButtonGroup::on_btn_clicked(){
     if (clickedButton) {
         QString buttonNumber = clickedButton->objectName().mid(4);
         bool conversionOK = false;
-        int buttonIndex = buttonNumber.toInt(&conversionOK);
+        quint8 buttonIndex = buttonNumber.toUInt(&conversionOK);
 
         if (conversionOK) {
             emit clickSignal(parameter, buttonIndex);

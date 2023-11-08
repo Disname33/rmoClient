@@ -14,6 +14,10 @@ CONFIG += c++11
 TARGET = rmoclient
 
 HEADERS += widgets/controlbuttongroup.h \
+    widgets/controlpanelwidget.h \
+    widgets/exitwidget.h \
+    widgets/messagebrowser.h \
+    widgets/radarsettingswidget.h \
     widgets/stationstatus.h \
     widgets/radarparameters.h \
     widgets/planpositionindicator.h \
@@ -21,6 +25,10 @@ HEADERS += widgets/controlbuttongroup.h \
     clientwindow.h
 
 SOURCES += widgets/controlbuttongroup.cpp \
+               widgets/controlpanelwidget.cpp \
+               widgets/exitwidget.cpp \
+               widgets/messagebrowser.cpp \
+               widgets/radarsettingswidget.cpp \
                widgets/stationstatus.cpp \
                widgets/planpositionindicator.cpp \
                widgets/mousepositioninfo.cpp \
@@ -33,3 +41,7 @@ win32:RC_FILE = res.rc
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+DISTFILES += \
+    README.md \
+    settings.ini
